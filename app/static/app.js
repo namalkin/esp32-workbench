@@ -157,32 +157,55 @@ $("#send-form").addEventListener("submit", async (e) => {
 
 // ---------- прошивка ----------
 
-async function withLoader(action) {
-  if (busy) return false;
-  setBusy(true);
-  const reopen = !!monitor || $("#auto-monitor").checked;
-  let transport = null;
-  let ok = false;
+const SAFE_BAUD = 115200;
+
+async function runLoader(action, baudrate) {
+  const transport = new Transport(port, false);
   try {
-    await ensurePort();
-    await stopMonitor();
-    transport = new Transport(port, false);
     const loader = new ESPLoader({
       transport,
-      baudrate: Number($("#flash-baud").value),
+      baudrate,
       terminal: { clean() {}, writeLine: (d) => say(d), write: (d) => print(logEl, d) },
     });
-    say("\n▶ Подключаюсь к загрузчику…");
+    say(`\n▶ Подключаюсь к загрузчику (${baudrate})…`);
     const chip = await loader.main();
     $("#chip").textContent = `· ${chip}`;
     await action(loader);
     await loader.after("hard_reset");
-    ok = true;
-  } catch (e) {
-    say("❌ " + (e?.message || e));
-    say("Если не подключается: зажми BOOT на плате, нажми «Прошить» и отпусти BOOT, когда пойдёт запись.");
   } finally {
-    try { await transport?.disconnect(); } catch { /* порт уже закрыт */ }
+    try { await transport.disconnect(); } catch { /* порт уже закрыт */ }
+  }
+}
+
+async function withLoader(action) {
+  if (busy) return false;
+  setBusy(true);
+  const reopen = !!monitor || $("#auto-monitor").checked;
+  const chosen = Number($("#flash-baud").value);
+  // CP210x на Windows через WebSerial часто ловит мусор после смены скорости — тогда повторяем на 115200
+  const attempts = chosen > SAFE_BAUD ? [chosen, SAFE_BAUD] : [chosen];
+  let ok = false;
+  try {
+    await ensurePort();
+    await stopMonitor();
+    for (const [i, baud] of attempts.entries()) {
+      try {
+        await runLoader(action, baud);
+        ok = true;
+        break;
+      } catch (e) {
+        say("❌ " + (e?.message || e));
+        if (i < attempts.length - 1) {
+          say(`↻ Повторяю на ${attempts[i + 1]}…`);
+          setProgress(null);
+          await sleep(500);
+        }
+      }
+    }
+    if (!ok) say("Если не подключается: зажми BOOT на плате, нажми «Прошить» и отпусти BOOT, когда пойдёт запись.");
+  } catch (e) {
+    say("❌ " + (e?.message || e));  // порт не выбран
+  } finally {
     setProgress(null);
     setBusy(false);
   }
