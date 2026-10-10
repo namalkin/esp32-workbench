@@ -24,16 +24,20 @@ MIME = {
     ".svg": "image/svg+xml",
 }
 
-# Платы для «Нового проекта»: те же, что прогреты в warmup/platformio.ini
+# Встроенный USB вместо CP210x/CH340: Serial идёт через него
+USB_CDC = ["-DARDUINO_USB_MODE=1", "-DARDUINO_USB_CDC_ON_BOOT=1"]
+
+# Платы для «Нового проекта»; их тулчейны прогреты в warmup/platformio.ini — собираются офлайн.
+# led: пин светодиода для шаблона-мигалки (LED_BUILTIN — из описания платы, у S3 это RGB).
 BOARDS = {
-    "esp32dev": {"title": "ESP32 DevKit v1", "led": 2, "flags": []},
-    "esp32-c3-devkitm-1": {
-        "title": "ESP32-C3 (SuperMini и др.)",
-        "led": 8,
-        # Serial через встроенный USB, без отдельного CP210x/CH340
-        "flags": ["-DARDUINO_USB_MODE=1", "-DARDUINO_USB_CDC_ON_BOOT=1"],
-    },
+    "esp32dev": {"title": "ESP32 · DevKit v1 (WROOM-32)", "led": "2", "flags": []},
+    "esp32cam": {"title": "ESP32 · ESP32-CAM (AI-Thinker)", "led": "33", "flags": []},
+    "esp32-s3-devkitc-1": {"title": "ESP32-S3 · DevKitC / SuperMini", "led": "LED_BUILTIN", "flags": USB_CDC},
+    "lolin_s2_mini": {"title": "ESP32-S2 · Mini (Lolin)", "led": "15", "flags": []},
+    "esp32-c3-devkitm-1": {"title": "ESP32-C3 · SuperMini / DevKitM", "led": "8", "flags": USB_CDC},
 }
+# Любая другая плата платформы espressif32 (id как в docs.platformio.org)
+OTHER_BOARD = {"led": "LED_BUILTIN", "flags": []}
 
 build_lock = threading.Lock()
 metadata_cache: dict[tuple[str, str], tuple[float, list[dict]]] = {}
@@ -112,12 +116,12 @@ def flash_images(project: Path, env: str) -> list[dict]:
 def new_project(name: str, board: str) -> str:
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,40}", name):
         raise ValueError("Имя: латиница, цифры, - и _, до 40 символов")
-    if board not in BOARDS:
-        raise ValueError("Неизвестная плата")
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{1,60}", board):
+        raise ValueError("Плата: id из PlatformIO, например esp32-s3-devkitc-1")
     project = PROJECTS / name
     if project.exists():
         raise ValueError("Такая папка уже есть")
-    spec = BOARDS[board]
+    spec = BOARDS.get(board, OTHER_BOARD)
     flags = "".join(f"\n    {f}" for f in spec["flags"])
     ini = (
         f"[env:{board}]\n"
@@ -127,9 +131,14 @@ def new_project(name: str, board: str) -> str:
         "monitor_speed = 115200\n"
         + (f"build_flags ={flags}\n" if flags else "")
     )
+    led = spec["led"]
+    led_decl = (
+        "#ifdef LED_BUILTIN\nconstexpr int kLed = LED_BUILTIN;\n#else\nconstexpr int kLed = 2;  // поправь под свою плату\n#endif\n"
+        if led == "LED_BUILTIN" else f"constexpr int kLed = {led};\n"
+    )
     main = (
         "#include <Arduino.h>\n\n"
-        f"constexpr int kLed = {spec['led']};\n\n"
+        f"{led_decl}\n"
         "void setup() {\n"
         "    Serial.begin(115200);\n"
         "    pinMode(kLed, OUTPUT);\n"

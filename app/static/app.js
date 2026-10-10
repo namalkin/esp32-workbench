@@ -362,6 +362,7 @@ async function loadProjects() {
     const boardSelect = $("#new-board");
     if (!boardSelect.options.length) {
       for (const [id, title] of Object.entries(boards)) boardSelect.add(new Option(title, id));
+      boardSelect.add(new Option("Другая…", ""));
     }
     setBusy(busy);
   } catch (e) {
@@ -371,17 +372,26 @@ async function loadProjects() {
 
 $("#btn-refresh").addEventListener("click", loadProjects);
 
+$("#new-board").addEventListener("change", (e) => {
+  const other = e.target.value === "";
+  $("#new-custom").hidden = !other;
+  $("#new-custom").required = other;
+  $("#new-hint").hidden = !other;
+});
+
 $("#new-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const form = new FormData(e.target);
+  const board = form.get("board") || form.get("custom").trim();
   try {
     await api("/api/new", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: form.get("name"), board: form.get("board") }),
+      body: JSON.stringify({ name: form.get("name"), board }),
     });
-    say(`✅ Создан проект ${form.get("name")}`);
+    say(`✅ Создан проект ${form.get("name")} (${board})`);
     e.target.reset();
+    $("#new-board").dispatchEvent(new Event("change"));
     loadProjects();
   } catch (err) {
     say("❌ " + err.message);

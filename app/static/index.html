@@ -34,8 +34,13 @@
         <form id="new-form">
           <input name="name" placeholder="имя-папки" pattern="[A-Za-z0-9_\-]{1,40}" required>
           <select name="board" id="new-board"></select>
+          <input name="custom" id="new-custom" placeholder="id платы, напр. esp32-s3-devkitc-1" hidden>
           <button>Создать</button>
         </form>
+        <p class="muted small" id="new-hint" hidden>
+          Список id: <a href="https://docs.platformio.org/en/latest/boards/index.html#espressif-32" target="_blank" rel="noopener">docs.platformio.org → Espressif 32</a>.
+          Без интернета соберутся платы на ESP32, S2, S3 и C3.
+        </p>
       </details>
     </div>
 
