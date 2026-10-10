@@ -1,0 +1,12 @@
+# docker compose up -d   ->  http://localhost:8090
+services:
+  app:
+    build: .
+    image: esp32-workbench
+    restart: unless-stopped
+    ports:
+      # Только localhost: WebSerial всё равно работает лишь на localhost/https,
+      # а плата подключена к тому же компьютеру, где открыт браузер.
+      - "127.0.0.1:${PORT:-8090}:8090"
+    volumes:
+      - ${PROJECTS_DIR:-./projects}:/projects

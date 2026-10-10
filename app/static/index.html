@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ESP32 Workbench</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1>ESP32 Workbench</h1>
+  <div class="port">
+    <span class="dot" id="port-dot"></span>
+    <span>Плата: <b id="port-name">не выбрана</b> <span id="chip" class="muted"></span></span>
+    <button id="btn-port">Выбрать порт</button>
+  </div>
+</header>
+
+<div id="no-serial" class="banner" hidden>
+  Этот браузер не умеет WebSerial. Открой страницу в <b>Chrome</b> или <b>Edge</b> (Safari и Firefox не подходят),
+  и именно по адресу <b>localhost</b>.
+</div>
+
+<main>
+  <section class="col">
+    <div class="card">
+      <div class="card-head">
+        <h2>Проекты</h2>
+        <button class="ghost" id="btn-refresh" title="Обновить список">⟳</button>
+      </div>
+      <div id="projects"><p class="muted">Загрузка…</p></div>
+      <details class="new">
+        <summary>Новый проект</summary>
+        <form id="new-form">
+          <input name="name" placeholder="имя-папки" pattern="[A-Za-z0-9_\-]{1,40}" required>
+          <select name="board" id="new-board"></select>
+          <button>Создать</button>
+        </form>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2>Свой .bin</h2>
+      <form id="bin-form" class="row">
+        <input type="file" id="bin-file" accept=".bin" required>
+        <label>адрес <input id="bin-addr" value="0x0" size="8"></label>
+        <button>Прошить</button>
+      </form>
+      <p class="muted small">Склеенный образ (factory) — с адреса 0x0, одна прошивка приложения — с 0x10000.</p>
+    </div>
+
+    <div class="card">
+      <h2>Настройки</h2>
+      <div class="row">
+        <label>Скорость прошивки
+          <select id="flash-baud">
+            <option>115200</option><option>230400</option><option selected>460800</option><option>921600</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="auto-monitor" checked> монитор после прошивки</label>
+      </div>
+      <button class="danger" id="btn-erase">Стереть всю flash</button>
+    </div>
+  </section>
+
+  <section class="col wide">
+    <div class="card">
+      <div class="card-head">
+        <h2>Лог</h2>
+        <div class="progress" id="progress" hidden><div id="progress-bar"></div></div>
+        <button class="ghost" data-clear="log">Очистить</button>
+      </div>
+      <pre id="log"></pre>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>Serial-монитор</h2>
+        <select id="mon-baud">
+          <option>9600</option><option selected>115200</option><option>230400</option><option>921600</option>
+        </select>
+        <button id="btn-monitor">Открыть</button>
+        <button id="btn-reset" title="Перезагрузить плату через RTS">Reset</button>
+        <button class="ghost" data-clear="monitor">Очистить</button>
+      </div>
+      <pre id="monitor"></pre>
+      <form id="send-form" class="row">
+        <input id="send-text" placeholder="Отправить в плату…" autocomplete="off">
+        <button>Отправить</button>
+      </form>
+    </div>
+  </section>
+</main>
+
+<script type="module" src="/static/app.js"></script>
+</body>
+</html>
